@@ -1,12 +1,13 @@
 #include "utils.h"
-#include "diff.h"
-#include "shamir.h"
-#include "el_gamal.h"
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
 #include <random>
 #include <ctime>
+
+extern uint64_t DH_PRIME;
+extern uint64_t SHAMIR_PRIME;
+extern const uint64_t EL_GAMAL_PRIME;
 
 uint64_t ModInverse(uint64_t a, uint64_t m) {
     try {
@@ -40,11 +41,9 @@ uint64_t ModExp(uint64_t base, uint64_t exponent, uint64_t mod) {
         base = base % mod;
         
         while (exponent > 0) {
-            // Если exponent нечетный, умножаем результат на base по модулю mod
             if (exponent & 1) {
                 result = (result * base) % mod;
             }
-            // Делим exponent на 2 и возводим base в квадрат по модулю mod
             exponent = exponent >> 1;
             base = (base * base) % mod;
         }
@@ -54,7 +53,6 @@ uint64_t ModExp(uint64_t base, uint64_t exponent, uint64_t mod) {
     }
 }
 
-// Генерация случайного числа в диапазоне
 uint64_t GenerateRandom(uint64_t min, uint64_t max) {
     random_device rd;
     mt19937_64 gen(rd());
@@ -62,7 +60,6 @@ uint64_t GenerateRandom(uint64_t min, uint64_t max) {
     return dis(gen);
 }
 
-// Функция для вычисления наибольшего общего делителя
 uint64_t gcd(uint64_t a, uint64_t b) {
     while (b != 0) {
         uint64_t t = b;
@@ -72,15 +69,12 @@ uint64_t gcd(uint64_t a, uint64_t b) {
     return a;
 }
 
-// Генерация ключей для Диффи-Хеллмана
 bool GenerateDiffieHellmanKeys() {
     try {
-        // Проверяем, существует ли файл с ключами
         ifstream checkFile("diff_key.txt");
         if (checkFile.good()) {
             cout << "Файл diff_key.txt уже существует." << endl;
             
-            // Читаем существующие ключи для проверки
             uint64_t existing_alice = 0, existing_bob = 0;
             checkFile >> existing_alice >> existing_bob;
             checkFile.close();
@@ -98,11 +92,9 @@ bool GenerateDiffieHellmanKeys() {
             }
         }
         
-        // Генерируем новые приватные ключи
         uint64_t alice_private = GenerateRandom(2, DH_PRIME - 2);
         uint64_t bob_private = GenerateRandom(2, DH_PRIME - 2);
         
-        // Сохраняем в файл ТОЛЬКО приватные ключи (только числа)
         ofstream keyFile("diff_key.txt");
         if (!keyFile) {
             throw runtime_error("Не удалось создать файл diff_key.txt");
@@ -123,15 +115,12 @@ bool GenerateDiffieHellmanKeys() {
     }
 }
 
-// Генерация ключей для протокола Шамира
 bool GenerateShamirKeys() {
     try {
-        // Проверяем, существует ли файл с ключами
         ifstream checkFile("shamir_key.txt");
         if (checkFile.good()) {
             cout << "Файл shamir_key.txt уже существует." << endl;
             
-            // Читаем существующие ключи для проверки
             uint64_t existing_ca = 0, existing_cb = 0;
             checkFile >> existing_ca >> existing_cb;
             checkFile.close();
@@ -149,20 +138,16 @@ bool GenerateShamirKeys() {
             }
         }
         
-        // Генерируем новые ключи с проверкой взаимной простоты
         uint64_t ca_private, cb_private;
         
-        // Генерируем CA, который взаимно прост с (SHAMIR_PRIME - 1)
         do {
             ca_private = GenerateRandom(2, SHAMIR_PRIME - 2);
         } while (gcd(ca_private, SHAMIR_PRIME - 1) != 1);
         
-        // Генерируем CB, который взаимно прост с (SHAMIR_PRIME - 1)
         do {
             cb_private = GenerateRandom(2, SHAMIR_PRIME - 2);
         } while (gcd(cb_private, SHAMIR_PRIME - 1) != 1);
         
-        // Сохраняем в файл ТОЛЬКО CA и CB (только числа)
         ofstream keyFile("shamir_key.txt");
         if (!keyFile) {
             throw runtime_error("Не удалось создать файл shamir_key.txt");
@@ -183,15 +168,12 @@ bool GenerateShamirKeys() {
     }
 }
 
-// Генерация ключей для Эль-Гамаля
 bool GenerateElGamalKeys() {
     try {
-        // Проверяем, существует ли файл с ключами
         ifstream checkFile("el_key.txt");
         if (checkFile.good()) {
             cout << "Файл el_key.txt уже существует." << endl;
             
-            // Читаем существующие ключи для проверки
             uint64_t existing_alice = 0, existing_session = 0;
             checkFile >> existing_alice >> existing_session;
             checkFile.close();
@@ -209,11 +191,9 @@ bool GenerateElGamalKeys() {
             }
         }
         
-        // Генерируем новые ключи
         uint64_t alice_private = GenerateRandom(2, EL_GAMAL_PRIME - 2);
         uint64_t session_key = GenerateRandom(2, EL_GAMAL_PRIME - 2);
         
-        // Сохраняем в файл ТОЛЬКО приватный ключ Алисы и сессионный ключ (только числа)
         ofstream keyFile("el_key.txt");
         if (!keyFile) {
             throw runtime_error("Не удалось создать файл el_key.txt");
