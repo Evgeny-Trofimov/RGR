@@ -11,7 +11,4 @@ extern "C" {
     bool decryptFileDiffieHellman(const string& inputFile, const string& outputFile);
 }
 
-extern uint64_t DH_PRIME;
-extern uint64_t DH_GENERATOR;
-
 #endif
