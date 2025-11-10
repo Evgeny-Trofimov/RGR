@@ -1,72 +1,62 @@
-# Компилятор и флаги
+# компилятор и флаги
 CXX := g++
 CXXFLAGS := -std=c++11 -Wall -Wextra -fPIC
 LDFLAGS := -Wl,-rpath,'$$ORIGIN'
 
-# Цели
+#цели
 TARGET := encrypt_decrypt
-SO_TARGETS := libutils.so libdiff.so libshamir.so libel_gamal.so
+SO_TARGETS := libconstants.so libutils.so libdiff.so libshamir.so libel_gamal.so
 OBJS := main.o
 
 .PHONY: all clean clear help test-libs run
 
-# Основная цель - сборка всего
+#сборка проекта
 all: $(SO_TARGETS) $(TARGET)
 	@echo "=== Сборка завершена ==="
 	@echo "Запустить проект: ./encrypt_decrypt"
 
-# Сборка главного исполняемого файла
+#сборка главного файла
 $(TARGET): $(OBJS) | $(SO_TARGETS)
-	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) -L. -ldiff -lshamir -lel_gamal -lutils $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $@ $(OBJS) -ldl -Wl,-rpath,'$$ORIGIN'
 
-# Сборка библиотек с правильными путями
-libutils.so: utils.o
+#сборка библиотек в определённом порядке
+libconstants.so: constants.o
 	$(CXX) -shared -o $@ $^ $(LDFLAGS)
 
-libdiff.so: diff.o | libutils.so
-	$(CXX) -shared -o $@ $^ -L. -lutils $(LDFLAGS)
+libutils.so: utils.o | libconstants.so
+	$(CXX) -shared -o $@ $^ -L. -lconstants $(LDFLAGS)
 
-libshamir.so: shamir.o | libutils.so
-	$(CXX) -shared -o $@ $^ -L. -lutils $(LDFLAGS)
+libdiff.so: diff.o | libutils.so libconstants.so
+	$(CXX) -shared -o $@ $^ -L. -lutils -lconstants $(LDFLAGS)
 
-libel_gamal.so: el_gamal.o | libutils.so
-	$(CXX) -shared -o $@ $^ -L. -lutils $(LDFLAGS)
+libshamir.so: shamir.o | libutils.so libconstants.so
+	$(CXX) -shared -o $@ $^ -L. -lutils -lconstants $(LDFLAGS)
 
-# Компиляция объектных файлов
+libel_gamal.so: el_gamal.o | libutils.so libconstants.so
+	$(CXX) -shared -o $@ $^ -L. -lutils -lconstants $(LDFLAGS)
+
+#копиляция о-файлов
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Зависимости
-diff.o: diff.cpp diff.h utils.h
-el_gamal.o: el_gamal.cpp el_gamal.h utils.h
-shamir.o: shamir.cpp shamir.h utils.h
-utils.o: utils.cpp utils.h diff.h shamir.h el_gamal.h
-main.o: main.cpp diff.h shamir.h el_gamal.h utils.h
+#зависимости
+constants.o: constants.cpp constants.h
+utils.o: utils.cpp utils.h
+diff.o: diff.cpp diff.h utils.h constants.h
+shamir.o: shamir.cpp shamir.h utils.h constants.h
+el_gamal.o: el_gamal.cpp el_gamal.h utils.h constants.h
+main.o: main.cpp
 
-# Тестовая цель для проверки библиотек - упрощенный вывод
-test-libs: $(SO_TARGETS)
-	@echo "=== Проверка библиотек ==="
-	@for so in $(SO_TARGETS); do \
-		echo -n "$$so: "; \
-		if ldd $$so 2>/dev/null | grep -q "not found"; then \
-			echo "не найден"; \
-		else \
-			echo "найден"; \
-		fi; \
-	done
-	@echo "=== Проверка завершена ==="
-
-# Полная очистка проекта
+#очистка
 clear:
-	rm -f $(OBJS) diff.o shamir.o el_gamal.o utils.o
+	rm -f $(OBJS) constants.o utils.o diff.o shamir.o el_gamal.o
 	rm -f $(TARGET) $(SO_TARGETS)
 	rm -f diff_key.txt shamir_key.txt el_key.txt temp_input.txt *.bin
 	@echo "=== Проект полностью очищен ==="
 
-# Помощь
+#помощь
 help:
 	@echo "Доступные команды:"
 	@echo "make all       - сборка проекта и библиотек"
-	@echo "make test-libs - проверка созданных библиотек"
 	@echo "make clear     - удаление всех сгенерированных файлов"
 	@echo "make help      - показать эту справку"
