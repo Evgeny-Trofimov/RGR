@@ -11,7 +11,4 @@ extern "C" {
     bool decryptFileElGamal(const string& inputFile, const string& outputFile);
 }
 
-extern const uint64_t EL_GAMAL_PRIME;
-extern const uint64_t EL_GAMAL_GENERATOR;
-
 #endif
