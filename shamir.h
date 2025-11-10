@@ -11,6 +11,4 @@ extern "C" {
     bool DecryptFile(const string& inputFile, const string& outputFile);
 }
 
-extern uint64_t SHAMIR_PRIME;
-
 #endif
