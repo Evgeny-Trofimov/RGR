@@ -1,35 +1,31 @@
 #include "shamir.h"
 #include "utils.h"
+#include "constants.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
 #include <stdexcept>
 
-// Определение параметра для протокола Шамира
-uint64_t SHAMIR_PRIME = 4294967311;
-
-// Шифрование по протоколу Шамира
+//шифровка по шифру Шамира
 bool EncryptFile(const string& inputFile, const string& outputFile) {
-    try {      
-        // Запрос ключей
+    try {
         uint64_t ca_private, cb_private;
         
         cout << "Введите приватный ключ CA: ";
-        if (!(cin >> ca_private)) {    // ← ТОЛЬКО ОДИН ввод
+        if (!(cin >> ca_private)) {
             cin.clear();
             cin.ignore(1000, '\n');
             throw runtime_error("Ошибка ввода приватного ключа CA");
         }  
         
         cout << "Введите приватный ключ CB: ";
-        if (!(cin >> cb_private)) {    // ← ТОЛЬКО ОДИН ввод
+        if (!(cin >> cb_private)) {
             cin.clear();
             cin.ignore(1000, '\n');
             throw runtime_error("Ошибка ввода приватного ключа CB");
         } 
         
-        // Очищаем буфер после ввода чисел
         cin.ignore(1000, '\n');
         
         ifstream input(inputFile, ios::binary);
@@ -37,7 +33,7 @@ bool EncryptFile(const string& inputFile, const string& outputFile) {
             throw runtime_error("Не удалось открыть входной файл: " + inputFile);
         }
         
-        // Читаем весь файл
+        //читаем файл
         vector<unsigned char> buffer(
             (istreambuf_iterator<char>(input)),
             istreambuf_iterator<char>()
@@ -57,30 +53,29 @@ bool EncryptFile(const string& inputFile, const string& outputFile) {
         cout << "Проверка: CA * DA mod (p-1) = " << (ca_private * da_private) % (SHAMIR_PRIME - 1) << " (должно быть 1)" << endl;
         cout << "Проверка: CB * DB mod (p-1) = " << (cb_private * db_private) % (SHAMIR_PRIME - 1) << " (должно быть 1)" << endl;
         
-        // Первое шифрование: X1 = M^CA mod p
+        //1-ая стадия: X1 = M^Cа mod p
         vector<uint64_t> intermediate1(buffer.size());
         for (size_t i = 0; i < buffer.size(); ++i) {
             uint64_t byte_value = static_cast<uint64_t>(buffer[i]);
             intermediate1[i] = ModExp(byte_value, ca_private, SHAMIR_PRIME);
         }
         
-        // Второе шифрование: X2 = X1^CB mod p
+        //2-ая стадия: X2 = X1^Cb mod p
         vector<uint64_t> encrypted_data(buffer.size());
         for (size_t i = 0; i < buffer.size(); ++i) {
             encrypted_data[i] = ModExp(intermediate1[i], cb_private, SHAMIR_PRIME);
         }
         
-        // Записываем зашифрованные данные (как uint64_t)
+        //записываем данные
         ofstream output(outputFile, ios::binary);
         if (!output) {
             throw runtime_error("Не удалось создать выходной файл: " + outputFile);
         }
         
-        // Записываем размер исходных данных
+        //записываем размер
         uint64_t original_size = buffer.size();
         output.write(reinterpret_cast<const char*>(&original_size), sizeof(original_size));
         
-        // Записываем зашифрованные данные
         for (uint64_t value : encrypted_data) {
             output.write(reinterpret_cast<const char*>(&value), sizeof(value));
         }
@@ -96,27 +91,25 @@ bool EncryptFile(const string& inputFile, const string& outputFile) {
     }
 }
 
-// Дешифрование по протоколу Шамира
+//дешифрока по шифру Шамира
 bool DecryptFile(const string& inputFile, const string& outputFile) {
     try {
-        // Запрос ключей
         uint64_t ca_private, cb_private;
         
         cout << "Введите приватный ключ CA: ";
-        if (!(cin >> ca_private)) {    // ← ТОЛЬКО ОДИН ввод
+        if (!(cin >> ca_private)) {
             cin.clear();
             cin.ignore(1000, '\n');
             throw runtime_error("Ошибка ввода приватного ключа CA");
         }  
         
         cout << "Введите приватный ключ CB: ";
-        if (!(cin >> cb_private)) {    // ← ТОЛЬКО ОДИН ввод
+        if (!(cin >> cb_private)) {
             cin.clear();
             cin.ignore(1000, '\n');
             throw runtime_error("Ошибка ввода приватного ключа CB");
         } 
         
-        // Очищаем буфер после ввода чисел
         cin.ignore(1000, '\n');
         
         uint64_t da_private = ModInverse(ca_private, SHAMIR_PRIME - 1);
@@ -127,13 +120,13 @@ bool DecryptFile(const string& inputFile, const string& outputFile) {
             throw runtime_error("Не удалось открыть входной файл: " + inputFile);
         }
         
-        // Читаем размер исходных данных
+        //читаем размер
         uint64_t original_size;
         if (!input.read(reinterpret_cast<char*>(&original_size), sizeof(original_size))) {
             throw runtime_error("Не удалось прочитать размер исходных данных");
         }
         
-        // Читаем зашифрованные данные
+        //читаем данные
         vector<uint64_t> encrypted_data(original_size);
         for (size_t i = 0; i < original_size; ++i) {
             if (!input.read(reinterpret_cast<char*>(&encrypted_data[i]), sizeof(uint64_t))) {
@@ -148,17 +141,17 @@ bool DecryptFile(const string& inputFile, const string& outputFile) {
         cout << "Простое число p: " << SHAMIR_PRIME << endl;
         cout << "Размер данных: " << original_size << " байт" << endl;
         
-        // Первое дешифрование: X3 = X2^DA mod p
+        //1-ая стадия: X3 = X2^Dа mod p
         vector<uint64_t> intermediate1(original_size);
         for (size_t i = 0; i < original_size; ++i) {
             intermediate1[i] = ModExp(encrypted_data[i], da_private, SHAMIR_PRIME);
         }
         
-        // Второе дешифрование: M = X3^DB mod p
+        //2-ая стадия: M = X3^Db mod p
         vector<unsigned char> decrypted_data(original_size);
         for (size_t i = 0; i < original_size; ++i) {
             uint64_t decrypted_value = ModExp(intermediate1[i], db_private, SHAMIR_PRIME);
-            // Проверяем, что результат в пределах байта
+            //проверяем, что дешифрованный байт входит в диапазон от 0 до 255
             if (decrypted_value > 255) {
                 throw runtime_error("Ошибка дешифрования: значение превышает 255");
             }
